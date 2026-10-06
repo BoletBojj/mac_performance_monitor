@@ -14,6 +14,12 @@ struct CPUCoreTypeTests {
         #expect(CPUCoreType.unspecified.label(index: 5) == "Core 5")
     }
 
+    @Test func labelHandlesANegativeIndexWithoutCrashing() {
+        // label(index:) is pure string formatting with no documented
+        // precondition on index — a negative value should format, not trap.
+        #expect(CPUCoreType.performance.label(index: -1) == "Performance Core -1")
+    }
+
     @Test func performanceAndEfficiencyHaveExplanations() {
         #expect(CPUCoreType.performance.explanation != nil)
         #expect(CPUCoreType.efficiency.explanation != nil)

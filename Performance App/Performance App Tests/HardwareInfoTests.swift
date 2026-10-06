@@ -19,5 +19,6 @@ struct HardwareInfoTests {
         let system = sections.first { $0.title == "System" }
         #expect(system?.items.contains { $0.label == "macOS Version" } == true)
         #expect(system?.items.contains { $0.label == "Host Name" } == true)
+        #expect(system?.items.contains { $0.label == "Uptime" } == true)
     }
 }

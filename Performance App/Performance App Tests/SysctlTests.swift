@@ -24,4 +24,18 @@ struct SysctlTests {
         #expect(memSize != nil)
         #expect((memSize ?? 0) > 0)
     }
+
+    @Test func stringReturnsNilForAnEmptyKey() {
+        #expect(Sysctl.string("") == nil)
+    }
+
+    @Test func int32ReturnsNilForATypeMismatchedKey() {
+        // hw.model is a string sysctl; reading it as a fixed 4-byte int32
+        // buffer should fail (ENOMEM) and return nil rather than garbage.
+        #expect(Sysctl.int32("hw.model") == nil)
+    }
+
+    @Test func uint64ReturnsNilForAnUnknownKey() {
+        #expect(Sysctl.uint64("hw.this_key_does_not_exist") == nil)
+    }
 }

@@ -1,9 +1,9 @@
 import SwiftUI
 import Charts
 
-private let samplingIntervalOptions: [TimeInterval] = [0.5, 1, 2, 5, 10]
-
 struct CPULoadView: View {
+    private static let samplingIntervalOptions: [TimeInterval] = [0.5, 1, 2, 5, 10]
+
     @State private var monitor = CPUMonitor()
 
     var body: some View {
@@ -19,7 +19,7 @@ struct CPULoadView: View {
                     Spacer()
 
                     Picker("Sample every", selection: $monitor.samplingInterval) {
-                        ForEach(samplingIntervalOptions, id: \.self) { interval in
+                        ForEach(Self.samplingIntervalOptions, id: \.self) { interval in
                             Text("\(interval.formatted())s").tag(interval)
                         }
                     }
@@ -81,11 +81,15 @@ struct CPULoadView: View {
 /// `Chart`. Internal (not private) — the view above it stays private.
 enum ChartMinutesAxis {
     static func tickValues(windowMinutes: Double, strideMinutes: Double) -> [Double] {
-        Array(stride(from: -windowMinutes, through: 0, by: strideMinutes))
+        precondition(strideMinutes > 0, "stride must be positive")
+        return Array(stride(from: -windowMinutes, through: 0, by: strideMinutes))
     }
 
     static func tickLabel(forMinutes minutes: Double) -> String {
-        "\(Int(minutes))m"
+        // Round rather than truncate: real call sites only ever pass whole
+        // minutes, but Int(minutes) would silently truncate toward zero for
+        // any caller that doesn't (e.g. -57.5 -> "-57m", the wrong neighbor).
+        "\(Int(minutes.rounded()))m"
     }
 }
 

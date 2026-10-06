@@ -15,6 +15,16 @@ struct CPUMonitorTests {
         #expect(layout.types.allSatisfy { $0 == .unspecified })
     }
 
+    @Test func zeroCoreCountProducesAnEmptyLayout() {
+        // Boundary distinct from "mismatch": zero is a valid Int that no real
+        // Mac reports, so it always takes the fallback path too.
+        let layout = CPUMonitor.coreTypeLayout(forCoreCount: 0)
+
+        #expect(layout.performanceCount == 0)
+        #expect(layout.efficiencyCount == 0)
+        #expect(layout.types.isEmpty)
+    }
+
     @Test func matchingCoreCountListsEfficiencyCoresBeforePerformanceCores() {
         // Mirrors CPUMonitor's own fallback logic, so this is only a
         // meaningful check on a Mac that actually reports a P/E split
@@ -69,5 +79,35 @@ struct CPUMonitorTests {
         let trimmed = CPUMonitor.trimmedHistory(samples, keeping: 3600, relativeTo: now)
 
         #expect(trimmed.count == 7)
+    }
+
+    @Test func trimmedHistoryOnEmptyInputStaysEmpty() {
+        let trimmed = CPUMonitor.trimmedHistory([], keeping: 3600, relativeTo: Date())
+        #expect(trimmed.isEmpty)
+    }
+
+    @Test func trimmedHistoryBoundaryIsInclusive() {
+        // A sample exactly `window` seconds old should be kept, not dropped —
+        // pins down the `>=` (not `>`) in the filter as intentional.
+        let now = Date()
+        let samples = [CPULoadSample(date: now.addingTimeInterval(-3600), overall: 1, performance: nil, efficiency: nil)]
+
+        let trimmed = CPUMonitor.trimmedHistory(samples, keeping: 3600, relativeTo: now)
+
+        #expect(trimmed.count == 1)
+    }
+
+    @Test func trimmedHistoryWithNonPositiveWindowKeepsNothingFromThePast() {
+        // A zero or negative window has no sensible meaning as a "keep the
+        // last N seconds" request, but it must degrade gracefully (empty
+        // result) rather than behave unpredictably.
+        let now = Date()
+        let samples = [
+            CPULoadSample(date: now.addingTimeInterval(-1), overall: 1, performance: nil, efficiency: nil),
+            CPULoadSample(date: now, overall: 2, performance: nil, efficiency: nil),
+        ]
+
+        #expect(CPUMonitor.trimmedHistory(samples, keeping: 0, relativeTo: now).map(\.overall) == [2])
+        #expect(CPUMonitor.trimmedHistory(samples, keeping: -10, relativeTo: now).isEmpty)
     }
 }

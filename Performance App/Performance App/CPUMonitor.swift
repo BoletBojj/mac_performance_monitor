@@ -62,6 +62,7 @@ final class CPUMonitor {
     var samplingInterval: TimeInterval = 1
 
     private let historyWindow: TimeInterval = 60 * 60 // keep the last 60 minutes, regardless of sampling interval
+    private let minimumSamplingInterval: TimeInterval = 0.1 // floor against a zero/negative interval spinning the loop
 
     private var previousTicks: [UInt32] = []
     private var coreTypes: [CPUCoreType] = []
@@ -70,7 +71,7 @@ final class CPUMonitor {
     func start() async {
         while !Task.isCancelled {
             refresh()
-            try? await Task.sleep(for: .seconds(samplingInterval))
+            try? await Task.sleep(for: .seconds(max(samplingInterval, minimumSamplingInterval)))
         }
     }
 
