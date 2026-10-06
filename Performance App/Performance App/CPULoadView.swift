@@ -1,15 +1,31 @@
 import SwiftUI
 import Charts
 
+private let samplingIntervalOptions: [TimeInterval] = [0.5, 1, 2, 5, 10]
+
 struct CPULoadView: View {
     @State private var monitor = CPUMonitor()
 
     var body: some View {
+        @Bindable var monitor = monitor
+
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("CPU Load")
-                    .font(.title2)
-                    .bold()
+                HStack {
+                    Text("CPU Load")
+                        .font(.title2)
+                        .bold()
+
+                    Spacer()
+
+                    Picker("Sample every", selection: $monitor.samplingInterval) {
+                        ForEach(samplingIntervalOptions, id: \.self) { interval in
+                            Text("\(interval.formatted())s").tag(interval)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
 
                 LoadRow(
                     label: "Total",
@@ -57,6 +73,19 @@ struct CPULoadView: View {
         .task {
             await monitor.start()
         }
+    }
+}
+
+/// Pure tick-generation/formatting logic for the history chart's X axis,
+/// pulled out of `CPUHistoryChart` so it's unit-testable without rendering a
+/// `Chart`. Internal (not private) — the view above it stays private.
+enum ChartMinutesAxis {
+    static func tickValues(windowMinutes: Double, strideMinutes: Double) -> [Double] {
+        Array(stride(from: -windowMinutes, through: 0, by: strideMinutes))
+    }
+
+    static func tickLabel(forMinutes minutes: Double) -> String {
+        "\(Int(minutes))m"
     }
 }
 
@@ -111,6 +140,18 @@ private struct CPUHistoryChart: View {
                 }
             }
             .chartXScale(domain: -Self.windowMinutes...0)
+            .chartXAxis {
+                // Swift Charts' automatic tick placement lands on odd
+                // strides (e.g. every 20 min) that don't match how people
+                // actually think about time. Force clean 10-minute ticks.
+                AxisMarks(values: ChartMinutesAxis.tickValues(windowMinutes: Self.windowMinutes, strideMinutes: 10)) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    if let minutes = value.as(Double.self) {
+                        AxisValueLabel(ChartMinutesAxis.tickLabel(forMinutes: minutes))
+                    }
+                }
+            }
             .chartYScale(domain: 0...yUpperBound)
             .chartYAxis {
                 AxisMarks { _ in

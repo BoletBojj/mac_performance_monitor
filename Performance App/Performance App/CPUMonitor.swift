@@ -56,16 +56,21 @@ final class CPUMonitor {
     private(set) var efficiencyCoreCount = 0
     private(set) var coreCount = 0
 
-    private let historyLimit = 3600 // 60 minutes at the 1-second sampling interval
+    /// User-adjustable from `CPULoadView`, in seconds. Read fresh at the top
+    /// of every loop iteration, so changing it takes effect on the very next
+    /// sleep without needing to restart the polling task.
+    var samplingInterval: TimeInterval = 1
+
+    private let historyWindow: TimeInterval = 60 * 60 // keep the last 60 minutes, regardless of sampling interval
 
     private var previousTicks: [UInt32] = []
     private var coreTypes: [CPUCoreType] = []
 
     /// Runs until the enclosing task is cancelled (e.g. by SwiftUI's `.task` modifier).
-    func start(interval: Duration = .seconds(1)) async {
+    func start() async {
         while !Task.isCancelled {
             refresh()
-            try? await Task.sleep(for: interval)
+            try? await Task.sleep(for: .seconds(samplingInterval))
         }
     }
 
@@ -162,10 +167,22 @@ final class CPUMonitor {
         performanceUsage = performanceCoreCount > 0 ? performanceUsageSum : nil
         efficiencyUsage = efficiencyCoreCount > 0 ? efficiencyUsageSum : nil
 
-        history.append(CPULoadSample(date: Date(), overall: overallUsage, performance: performanceUsage, efficiency: efficiencyUsage))
-        if history.count > historyLimit {
-            history.removeFirst(history.count - historyLimit)
-        }
+        let now = Date()
+        history.append(CPULoadSample(date: now, overall: overallUsage, performance: performanceUsage, efficiency: efficiencyUsage))
+        history = Self.trimmedHistory(history, keeping: historyWindow, relativeTo: now)
+    }
+
+    /// Drops samples older than `window`, measured from `now` — not a fixed
+    /// sample count, so the kept duration stays correct regardless of
+    /// `samplingInterval`. Internal + `nonisolated` so it's testable with
+    /// synthetic timestamps, without waiting on real wall-clock time.
+    nonisolated static func trimmedHistory(
+        _ history: [CPULoadSample],
+        keeping window: TimeInterval,
+        relativeTo now: Date
+    ) -> [CPULoadSample] {
+        let oldestKept = now.addingTimeInterval(-window)
+        return history.filter { $0.date >= oldestKept }
     }
 
     struct CoreTypeLayout: Equatable {
