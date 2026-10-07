@@ -7,10 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7529E9953076625A007A4720 /* Performance App Helper in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7529E97930765CED007A4720 /* Performance App Helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		75487B9230729506009D0128 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 75487B9130729506009D0128 /* .gitignore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		7529E99330766241007A4720 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7529E97830765CED007A4720;
+			remoteInfo = "Performance App Helper";
+		};
 		755DA99C3073DFF9000E8802 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 000000000000000000000000 /* Project object */;
@@ -20,16 +28,61 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		7529E97730765CED007A4720 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolder = None;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		7529E99130766207007A4720 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = Executables;
+			files = (
+				7529E9953076625A007A4720 /* Performance App Helper in CopyFiles */,
+			);
+		};
+		7529E99230766209007A4720 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = Contents/Library/LaunchDaemons;
+			dstSubfolder = Wrapper;
+			files = (
+			);
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* Performance App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Performance App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7529E97930765CED007A4720 /* Performance App Helper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Performance App Helper"; sourceTree = BUILT_PRODUCTS_DIR; };
 		75487B9130729506009D0128 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		755DA9983073DFF9000E8802 /* Performance App Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Performance App Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		7529E9973076629C007A4720 /* Exceptions for "Performance App Helper" folder in "Copy Files" phase from "Performance App" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 7529E99230766209007A4720 /* CopyFiles */;
+			membershipExceptions = (
+				com.performanceapp.helper.plist,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		000000000000000000000010 /* Performance App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Performance App";
+			sourceTree = "<group>";
+		};
+		7529E97A30765CED007A4720 /* Performance App Helper */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7529E9973076629C007A4720 /* Exceptions for "Performance App Helper" folder in "Copy Files" phase from "Performance App" target */,
+			);
+			path = "Performance App Helper";
 			sourceTree = "<group>";
 		};
 		755DA9993073DFF9000E8802 /* Performance App Tests */ = {
@@ -41,6 +94,11 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000130000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		7529E97630765CED007A4720 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
 			);
@@ -59,6 +117,7 @@
 				75487B9130729506009D0128 /* .gitignore */,
 				000000000000000000000010 /* Performance App */,
 				755DA9993073DFF9000E8802 /* Performance App Tests */,
+				7529E97A30765CED007A4720 /* Performance App Helper */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,6 +127,7 @@
 			children = (
 				000000000000000000000120 /* Performance App.app */,
 				755DA9983073DFF9000E8802 /* Performance App Tests.xctest */,
+				7529E97930765CED007A4720 /* Performance App Helper */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -82,8 +142,13 @@
 				000000000000000120000000 /* Sources */,
 				000000000000000130000000 /* Frameworks */,
 				000000000000000140000000 /* Resources */,
+				7529E99130766207007A4720 /* CopyFiles */,
+				7529E99230766209007A4720 /* CopyFiles */,
 			);
 			buildRules = (
+			);
+			dependencies = (
+				7529E99430766241007A4720 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				000000000000000000000010 /* Performance App */,
@@ -92,6 +157,24 @@
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* Performance App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7529E97830765CED007A4720 /* Performance App Helper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7529E97F30765CED007A4720 /* Build configuration list for PBXNativeTarget "Performance App Helper" */;
+			buildPhases = (
+				7529E97530765CED007A4720 /* Sources */,
+				7529E97630765CED007A4720 /* Frameworks */,
+				7529E97730765CED007A4720 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				7529E97A30765CED007A4720 /* Performance App Helper */,
+			);
+			name = "Performance App Helper";
+			productName = "Performance App Helper";
+			productReference = 7529E97930765CED007A4720 /* Performance App Helper */;
+			productType = "com.apple.product-type.tool";
 		};
 		755DA9973073DFF9000E8802 /* Performance App Tests */ = {
 			isa = PBXNativeTarget;
@@ -127,6 +210,9 @@
 					000000000000000100000000 = {
 						CreatedOnToolsVersion = 26.3;
 					};
+					7529E97830765CED007A4720 = {
+						CreatedOnToolsVersion = 27.0;
+					};
 					755DA9973073DFF9000E8802 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 000000000000000100000000;
@@ -149,6 +235,7 @@
 			targets = (
 				000000000000000100000000 /* Performance App */,
 				755DA9973073DFF9000E8802 /* Performance App Tests */,
+				7529E97830765CED007A4720 /* Performance App Helper */,
 			);
 		};
 /* End PBXProject section */
@@ -173,6 +260,11 @@
 			files = (
 			);
 		};
+		7529E97530765CED007A4720 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 		755DA9943073DFF9000E8802 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
@@ -181,6 +273,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		7529E99430766241007A4720 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7529E97830765CED007A4720 /* Performance App Helper */;
+			targetProxy = 7529E99330766241007A4720 /* PBXContainerItemProxy */;
+		};
 		755DA99D3073DFF9000E8802 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 000000000000000100000000 /* Performance App */;
@@ -327,16 +424,11 @@
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				DEVELOPMENT_TEAM = DWJ9678UF9;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
-				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
-				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -378,16 +470,11 @@
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				DEVELOPMENT_TEAM = DWJ9678UF9;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
-				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
-				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -423,12 +510,39 @@
 			};
 			name = Release;
 		};
+		7529E97D30765CED007A4720 /* Debug configuration for PBXNativeTarget "Performance App Helper" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DWJ9678UF9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		7529E97E30765CED007A4720 /* Release configuration for PBXNativeTarget "Performance App Helper" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DWJ9678UF9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		755DA99E3073DFF9000E8802 /* Debug configuration for PBXNativeTarget "Performance App Tests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DWJ9678UF9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -454,6 +568,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DWJ9678UF9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -489,6 +604,14 @@
 			buildConfigurations = (
 				000000000000000111000000 /* Debug configuration for PBXNativeTarget "Performance App" */,
 				000000000000000112000000 /* Release configuration for PBXNativeTarget "Performance App" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		7529E97F30765CED007A4720 /* Build configuration list for PBXNativeTarget "Performance App Helper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7529E97D30765CED007A4720 /* Debug configuration for PBXNativeTarget "Performance App Helper" */,
+				7529E97E30765CED007A4720 /* Release configuration for PBXNativeTarget "Performance App Helper" */,
 			);
 			defaultConfigurationName = Release;
 		};

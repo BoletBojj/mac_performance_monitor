@@ -3,6 +3,7 @@ import SwiftUI
 private enum SidebarItem: String, CaseIterable, Identifiable {
     case cpu = "CPU Load"
     case memory = "Memory"
+    case processes = "Processes"
     case hardware = "Hardware Info"
 
     var id: String { rawValue }
@@ -11,6 +12,7 @@ private enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .cpu: "cpu"
         case .memory: "memorychip"
+        case .processes: "list.bullet.rectangle"
         case .hardware: "desktopcomputer"
         }
     }
@@ -32,6 +34,8 @@ struct ContentView: View {
                 CPULoadView()
             case .memory:
                 MemoryView()
+            case .processes:
+                ProcessesView()
             case .hardware:
                 HardwareInfoView()
             case nil:
