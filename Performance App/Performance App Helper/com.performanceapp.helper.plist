@@ -15,5 +15,7 @@
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <key>ProcessType</key>
+    <string>Adaptive</string>
 </dict>
 </plist>
