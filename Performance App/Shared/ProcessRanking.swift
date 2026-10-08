@@ -1,13 +1,10 @@
 import Foundation
-import Darwin				    
+import Darwin
 
-/// Pure delta/ranking logic, independent of live process enumeration.
-/// Duplicated identically in "Performance App" (so it's unit-testable) and
-/// "Performance App Helper" (where it's actually used against live data) —
-/// same reasoning as ProcessHelperXPC.swift: no shared-framework target
-/// wiring exists between them, so keep both copies in sync when changing
-/// either.
-enum ProcessRanking {
+/// Pure delta/ranking logic, independent of live process enumeration. Lives
+/// in Shared/ so it's both unit-testable from the app target and usable by
+/// the helper, which is where it runs against live data.
+nonisolated enum ProcessRanking {
     /// `rusage_info_v2.ri_user_time`/`ri_system_time` are raw Mach absolute-time
     /// ticks, not nanoseconds — confirmed empirically (a controlled 0.5s busy
     /// loop reported ~20M raw units, i.e. ~41.67x too small to be nanoseconds

@@ -1,28 +1,4 @@
 import Foundation
-import Darwin
-
-struct MemorySnapshot: Equatable {
-    let totalBytes: UInt64
-    let freeBytes: UInt64
-    let activeBytes: UInt64
-    let inactiveBytes: UInt64
-    let wiredBytes: UInt64
-    let compressedBytes: UInt64
-    let swapUsedBytes: UInt64
-    let swapTotalBytes: UInt64
-
-    /// Active + inactive + wired + compressed — deliberately *not*
-    /// `totalBytes - freeBytes`. macOS caches aggressively, so "free" is
-    /// often tiny even when plenty of memory is actually available; raw
-    /// free/used is a well-known trap for a macOS memory readout.
-    var usedBytes: UInt64 {
-        activeBytes + inactiveBytes + wiredBytes + compressedBytes
-    }
-
-    var usedFraction: Double {
-        totalBytes > 0 ? Double(usedBytes) / Double(totalBytes) : 0
-    }
-}
 
 /// The four kernel-tracked categories that make up `usedBytes`. No `Color`
 /// here deliberately — this is model/domain data; the view layer decides how
@@ -66,51 +42,44 @@ enum MemoryCategory: CaseIterable, Hashable {
     }
 }
 
+/// One point in the app's local (fallback) memory-over-time chart — mirrors
+/// `CPULoadSample`'s role for `CPUMonitor`.
+struct MemorySample: Identifiable, Equatable {
+    let id = UUID()
+    let date: Date
+    let snapshot: MemorySnapshot
+}
+
 @MainActor
 @Observable
 final class MemoryMonitor {
     private(set) var snapshot: MemorySnapshot?
+    private(set) var history: [MemorySample] = []
 
     private let samplingInterval: TimeInterval = 1
+    private let historyWindow: TimeInterval = 60 * 60
 
     /// Runs until the enclosing task is cancelled (e.g. by SwiftUI's `.task` modifier).
     func start() async {
         while !Task.isCancelled {
-            snapshot = Self.readSnapshot()
+            if let newSnapshot = MemorySampling.readSnapshot() {
+                snapshot = newSnapshot
+                let now = Date()
+                history.append(MemorySample(date: now, snapshot: newSnapshot))
+                history = Self.trimmedHistory(history, keeping: historyWindow, relativeTo: now)
+            }
             try? await Task.sleep(for: .seconds(samplingInterval))
         }
     }
 
-    /// Reads system-wide (not per-process) virtual memory statistics via the
-    /// Mach API `host_statistics64` — the same category of API as
-    /// `CPUMonitor`'s `host_processor_info`, not the per-process `libproc`
-    /// family that turned out to require privileges this app doesn't have.
-    private nonisolated static func readSnapshot() -> MemorySnapshot? {
-        var stats = vm_statistics64()
-        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
-        let result = withUnsafeMutablePointer(to: &stats) { ptr -> kern_return_t in
-            ptr.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { reboundPtr in
-                host_statistics64(mach_host_self(), HOST_VM_INFO64, reboundPtr, &count)
-            }
-        }
-        guard result == KERN_SUCCESS else { return nil }
-        guard let totalBytes = Sysctl.uint64("hw.memsize") else { return nil }
-
-        let pageSize = UInt64(vm_page_size)
-
-        var swapUsage = xsw_usage()
-        var swapSize = MemoryLayout<xsw_usage>.size
-        let swapResult = sysctlbyname("vm.swapusage", &swapUsage, &swapSize, nil, 0)
-
-        return MemorySnapshot(
-            totalBytes: totalBytes,
-            freeBytes: UInt64(stats.free_count) * pageSize,
-            activeBytes: UInt64(stats.active_count) * pageSize,
-            inactiveBytes: UInt64(stats.inactive_count) * pageSize,
-            wiredBytes: UInt64(stats.wire_count) * pageSize,
-            compressedBytes: UInt64(stats.compressor_page_count) * pageSize,
-            swapUsedBytes: swapResult == 0 ? UInt64(swapUsage.xsu_used) : 0,
-            swapTotalBytes: swapResult == 0 ? UInt64(swapUsage.xsu_total) : 0
-        )
+    /// Mirrors `CPUMonitor.trimmedHistory` — see its comment for why this is
+    /// `nonisolated static` (unit-testable with synthetic timestamps).
+    nonisolated static func trimmedHistory(
+        _ history: [MemorySample],
+        keeping window: TimeInterval,
+        relativeTo now: Date
+    ) -> [MemorySample] {
+        let oldestKept = now.addingTimeInterval(-window)
+        return history.filter { $0.date >= oldestKept }
     }
 }

@@ -7,7 +7,7 @@ struct CPUMonitorTests {
         // No real Mac reports 999 cores, so the P/E counts from sysctl can
         // never add up to this — exercises the fallback path without
         // depending on the test machine's actual chip.
-        let layout = CPUMonitor.coreTypeLayout(forCoreCount: 999)
+        let layout = CPUSampling.coreTypeLayout(forCoreCount: 999)
 
         #expect(layout.performanceCount == 0)
         #expect(layout.efficiencyCount == 0)
@@ -18,7 +18,7 @@ struct CPUMonitorTests {
     @Test func zeroCoreCountProducesAnEmptyLayout() {
         // Boundary distinct from "mismatch": zero is a valid Int that no real
         // Mac reports, so it always takes the fallback path too.
-        let layout = CPUMonitor.coreTypeLayout(forCoreCount: 0)
+        let layout = CPUSampling.coreTypeLayout(forCoreCount: 0)
 
         #expect(layout.performanceCount == 0)
         #expect(layout.efficiencyCount == 0)
@@ -34,14 +34,14 @@ struct CPUMonitorTests {
             let performanceCores = Sysctl.int32("hw.perflevel0.physicalcpu").map(Int.init),
             let efficiencyCores = Sysctl.int32("hw.perflevel1.physicalcpu").map(Int.init)
         else {
-            let layout = CPUMonitor.coreTypeLayout(forCoreCount: 8)
+            let layout = CPUSampling.coreTypeLayout(forCoreCount: 8)
             #expect(layout.performanceCount == 0)
             #expect(layout.efficiencyCount == 0)
             return
         }
 
         let coreCount = performanceCores + efficiencyCores
-        let layout = CPUMonitor.coreTypeLayout(forCoreCount: coreCount)
+        let layout = CPUSampling.coreTypeLayout(forCoreCount: coreCount)
 
         #expect(layout.performanceCount == performanceCores)
         #expect(layout.efficiencyCount == efficiencyCores)

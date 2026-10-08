@@ -96,6 +96,64 @@ final class ProcessHelperClient {
         }
     }
 
+    /// `true` once the daemon has been talked to successfully at least once
+    /// this session — lets the CPU/Memory views fall back to their own local,
+    /// in-memory-only history when the helper isn't available instead of
+    /// showing an empty chart.
+    private(set) var isHelperReachable = false
+
+    func fetchCPUHistory(since: Date, bucketSeconds: Double) async -> [CPUHistoryPoint] {
+        guard let data = await fetchHistoryData({ $0.fetchCPUHistory(since: since, bucketSeconds: bucketSeconds, withReply: $1) }) else { return [] }
+        return HistoryCoding.decodeArray(CPUHistoryPoint.self, from: data)
+    }
+
+    func fetchMemoryHistory(since: Date, bucketSeconds: Double) async -> [MemoryHistoryPoint] {
+        guard let data = await fetchHistoryData({ $0.fetchMemoryHistory(since: since, bucketSeconds: bucketSeconds, withReply: $1) }) else { return [] }
+        return HistoryCoding.decodeArray(MemoryHistoryPoint.self, from: data)
+    }
+
+    func fetchProcessSummary(since: Date, limit: Int) async -> [ProcessSummaryEntry] {
+        guard let data = await fetchHistoryData({ $0.fetchProcessSummary(since: since, limit: limit, withReply: $1) }) else { return [] }
+        return HistoryCoding.decodeArray(ProcessSummaryEntry.self, from: data)
+    }
+
+    func fetchPeaks() async -> [PeakRecord] {
+        guard let data = await fetchHistoryData({ $0.fetchPeaks(withReply: $1) }) else { return [] }
+        return HistoryCoding.decodeArray(PeakRecord.self, from: data)
+    }
+
+    @discardableResult
+    func resetPeaks() async -> Bool {
+        await withCheckedContinuation { continuation in
+            guard let proxy = currentConnection().remoteObjectProxyWithErrorHandler({ _ in
+                continuation.resume(returning: false)
+            }) as? ProcessHelperProtocol else {
+                continuation.resume(returning: false)
+                return
+            }
+            proxy.resetPeaks { success in continuation.resume(returning: success) }
+        }
+    }
+
+    /// Shared plumbing for the history calls above: get a proxy, invoke the
+    /// XPC call, and resolve to `nil` on any connection error instead of
+    /// throwing — callers treat "no data" and "helper unreachable" the same
+    /// way (fall back to local-only data).
+    private func fetchHistoryData(_ call: @escaping (ProcessHelperProtocol, @escaping (Data) -> Void) -> Void) async -> Data? {
+        await withCheckedContinuation { continuation in
+            guard let proxy = currentConnection().remoteObjectProxyWithErrorHandler({ _ in
+                continuation.resume(returning: nil)
+            }) as? ProcessHelperProtocol else {
+                continuation.resume(returning: nil)
+                return
+            }
+            call(proxy) { [weak self] data in
+                Task { @MainActor in self?.isHelperReachable = true }
+                continuation.resume(returning: data)
+            }
+        }
+    }
+
     private func currentConnection() -> NSXPCConnection {
         if let connection { return connection }
 

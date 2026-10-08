@@ -11,5 +11,9 @@
         <key>com.performanceapp.helper</key>
         <true/>
     </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
 </dict>
 </plist>
