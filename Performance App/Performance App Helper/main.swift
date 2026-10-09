@@ -27,6 +27,10 @@ final class ProcessHelperService: NSObject, ProcessHelperProtocol {
         recorder.fetchProcessSummary(since: since, limit: limit, reply: reply)
     }
 
+    func fetchGPUHistory(since: Date, bucketSeconds: Double, withReply reply: @escaping (Data) -> Void) {
+        recorder.fetchGPUHistory(since: since, bucketSeconds: bucketSeconds, reply: reply)
+    }
+
     func fetchPeaks(withReply reply: @escaping (Data) -> Void) {
         recorder.fetchPeaks(reply: reply)
     }

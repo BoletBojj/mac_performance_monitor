@@ -1,7 +1,8 @@
 import SwiftUI
 
 private enum SidebarItem: String, CaseIterable, Identifiable {
-    case cpu = "CPU Load"
+    case coreActivity = "Core Activity"
+    case performanceHistory = "Performance History"
     case memory = "Memory"
     case processes = "Processes"
     case hardware = "Hardware Info"
@@ -10,7 +11,8 @@ private enum SidebarItem: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
-        case .cpu: "cpu"
+        case .coreActivity: "cpu"
+        case .performanceHistory: "chart.line.uptrend.xyaxis"
         case .memory: "memorychip"
         case .processes: "list.bullet.rectangle"
         case .hardware: "desktopcomputer"
@@ -19,7 +21,7 @@ private enum SidebarItem: String, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
-    @State private var selection: SidebarItem? = .cpu
+    @State private var selection: SidebarItem? = .coreActivity
 
     var body: some View {
         NavigationSplitView {
@@ -30,8 +32,10 @@ struct ContentView: View {
             .navigationTitle("Monitor")
         } detail: {
             switch selection {
-            case .cpu:
-                CPULoadView()
+            case .coreActivity:
+                CoreActivityView()
+            case .performanceHistory:
+                PerformanceHistoryView()
             case .memory:
                 MemoryView()
             case .processes:

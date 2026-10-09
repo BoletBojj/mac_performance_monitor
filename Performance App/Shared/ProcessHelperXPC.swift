@@ -23,6 +23,9 @@ nonisolated let processHelperMachServiceName = "com.performanceapp.helper"
     /// `[ProcessSummaryEntry]`, ranked by average CPU since `since`.
     func fetchProcessSummary(since: Date, limit: Int, withReply reply: @escaping (Data) -> Void)
 
+    /// `[GPULoadHistoryPoint]`, one per `bucketSeconds`-wide bucket since `since`.
+    func fetchGPUHistory(since: Date, bucketSeconds: Double, withReply reply: @escaping (Data) -> Void)
+
     /// `[PeakRecord]` — all-time highs, kept across pruning and reboots.
     func fetchPeaks(withReply reply: @escaping (Data) -> Void)
 

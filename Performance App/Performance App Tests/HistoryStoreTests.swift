@@ -25,6 +25,47 @@ struct HistoryStoreTests {
         #expect(abs(stats.max - 0.4) < 0.0001)
     }
 
+    @Test func insertAndQueryGPUHistoryRoundTrip() throws {
+        let store = try makeStore()
+        let base = Date(timeIntervalSince1970: 1_500_000)
+        let samples = [
+            HistoryStore.GPUSampleInput(date: base, loadFraction: 0.1, milliwatts: 200),
+            HistoryStore.GPUSampleInput(date: base.addingTimeInterval(1), loadFraction: 0.3, milliwatts: 400),
+        ]
+        try store.flush(cpuSamples: [], memorySamples: [], processSamples: [], gpuSamples: samples)
+
+        let points = try store.queryGPUHistory(since: base.addingTimeInterval(-1), bucketSeconds: 100)
+        let point = try #require(points.first)
+        #expect(abs(point.load.mean - 0.2) < 0.0001)
+        #expect(point.load.min == 0.1)
+        #expect(point.load.max == 0.3)
+        let power = try #require(point.power)
+        #expect(abs(power.mean - 300) < 0.0001)
+    }
+
+    @Test func gpuHistoryOmitsPowerWhenNeverRecorded() throws {
+        let store = try makeStore()
+        let base = Date(timeIntervalSince1970: 1_600_000)
+        try store.flush(
+            cpuSamples: [], memorySamples: [], processSamples: [],
+            gpuSamples: [HistoryStore.GPUSampleInput(date: base, loadFraction: 0.2, milliwatts: nil)]
+        )
+        let points = try store.queryGPUHistory(since: base.addingTimeInterval(-1), bucketSeconds: 100)
+        #expect(points.first?.power == nil)
+    }
+
+    @Test func gpuLoadPeakSurvivesPruning() throws {
+        let store = try makeStore()
+        let base = Date(timeIntervalSince1970: 1_700_000)
+        try store.flush(
+            cpuSamples: [], memorySamples: [], processSamples: [],
+            gpuSamples: [HistoryStore.GPUSampleInput(date: base, loadFraction: 0.9, milliwatts: 500)]
+        )
+        try store.prune(olderThan: base.addingTimeInterval(1000))
+        let peaks = try store.fetchPeaks()
+        #expect(peaks.first { $0.metric == .gpuLoad }?.value == 0.9)
+    }
+
     @Test func cpuHistoryOmitsPerformanceEfficiencyWhenNeverRecorded() throws {
         let store = try makeStore()
         let base = Date(timeIntervalSince1970: 2_000_000)

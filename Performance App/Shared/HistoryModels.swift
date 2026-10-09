@@ -57,6 +57,23 @@ nonisolated struct MemoryHistoryPoint: Codable, Equatable, Identifiable {
     var id: Date { date }
 }
 
+/// One `powermetrics` sample. Unlike every other sampled value in this app,
+/// this doesn't come from a direct Mach/BSD syscall — see `PowerMetricsReader`
+/// for why, and why its fields are optional/defensive.
+nonisolated struct GPULoadSample: Codable, Equatable {
+    let date: Date
+    let loadFraction: Double // 0...1, derived as 1 - idle_ratio
+    let milliwatts: Double? // derived from an energy-per-sample field; less certain than loadFraction
+}
+
+nonisolated struct GPULoadHistoryPoint: Codable, Equatable, Identifiable {
+    let date: Date
+    let load: BucketStats
+    let power: BucketStats?
+
+    var id: Date { date }
+}
+
 nonisolated struct ProcessSummaryEntry: Codable, Equatable, Identifiable {
     let name: String
     let averageUsage: Double
@@ -73,6 +90,7 @@ nonisolated struct PeakRecord: Codable, Equatable, Identifiable {
         case cpuEfficiency = "cpu.efficiency"
         case memoryUsed = "memory.used"
         case singleProcess = "process.single"
+        case gpuLoad = "gpu.load"
     }
 
     let metric: Metric

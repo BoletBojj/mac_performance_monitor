@@ -1,16 +1,30 @@
 import SwiftUI
 import Charts
 
-struct CPULoadView: View {
-    private static let samplingIntervalOptions: [TimeInterval] = [0.5, 1, 2, 5, 10]
-
-    @State private var monitor = CPUMonitor()
+/// Historical trends only — CPU and GPU load over a selectable range, sharing
+/// one range picker. Live "right now" numbers (CPU's per-core breakdown and
+/// GPU's single aggregate row alike) live on `CoreActivityView` instead; this
+/// page is purely about what happened over time, which is why CPU and GPU —
+/// two otherwise unrelated screens' worth of live data — share a page here:
+/// they're both just "a load percentage over time" from the chart's point of
+/// view.
+struct PerformanceHistoryView: View {
+    /// A local, non-displayed `CPUMonitor` purely so this page can fall back
+    /// to in-session local history when the helper's recorded CPU history
+    /// isn't available — the live per-core breakdown it also produces is
+    /// simply never read here. `CoreActivityView` has its own separate
+    /// instance; per this app's "no shared app-wide model" convention, two
+    /// independent instances is the expected shape, not a duplication bug —
+    /// `NavigationSplitView` only ever instantiates the one currently-visible
+    /// detail view anyway, so there's no real double-polling in practice.
+    @State private var cpuMonitor = CPUMonitor()
     @State private var client = ProcessHelperClient()
     @State private var selectedRange: HistoryRange = .fifteenMinutes
     @State private var showSpread = true
     @State private var remoteHistory: [CPUHistoryPoint] = []
     @State private var sinceBootHistory: [CPUHistoryPoint] = []
     @State private var peaks: [PeakRecord] = []
+    @State private var gpuHistory: [GPULoadHistoryPoint] = []
 
     private var bootTime: Date? { SystemClock.bootTime() }
 
@@ -19,7 +33,7 @@ struct CPULoadView: View {
     /// isn't registered, isn't reachable, or (briefly, right after boot)
     /// just hasn't recorded anything yet.
     private var displayedHistory: [CPUHistoryPoint] {
-        remoteHistory.isEmpty ? monitor.history.map(CPUHistoryPoint.fallback) : remoteHistory
+        remoteHistory.isEmpty ? cpuMonitor.history.map(CPUHistoryPoint.fallback) : remoteHistory
     }
 
     private var sinceBootLabel: String {
@@ -28,50 +42,11 @@ struct CPULoadView: View {
     }
 
     var body: some View {
-        @Bindable var monitor = monitor
-
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("CPU Load")
-                        .font(.title2)
-                        .bold()
-
-                    Spacer()
-
-                    Picker("Sample every", selection: $monitor.samplingInterval) {
-                        ForEach(Self.samplingIntervalOptions, id: \.self) { interval in
-                            Text("\(interval.formatted())s").tag(interval)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .fixedSize()
-                }
-
-                LoadRow(
-                    label: "Total",
-                    usage: monitor.overallUsage,
-                    capacity: Double(max(monitor.coreCount, 1)),
-                    decimalPlaces: 1
-                )
-                if let performanceUsage = monitor.performanceUsage {
-                    LoadRow(
-                        label: "Performance",
-                        usage: performanceUsage,
-                        capacity: Double(monitor.performanceCoreCount),
-                        help: CPUCoreType.performance.explanation,
-                        decimalPlaces: 1
-                    )
-                }
-                if let efficiencyUsage = monitor.efficiencyUsage {
-                    LoadRow(
-                        label: "Efficiency",
-                        usage: efficiencyUsage,
-                        capacity: Double(monitor.efficiencyCoreCount),
-                        help: CPUCoreType.efficiency.explanation,
-                        decimalPlaces: 1
-                    )
-                }
+                Text("Performance History")
+                    .font(.title2)
+                    .bold()
 
                 HistoryRangeControls(selectedRange: $selectedRange, showSpread: $showSpread)
 
@@ -81,30 +56,34 @@ struct CPULoadView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                Text("CPU").font(.headline)
+
                 CPUHistoryChart(
                     history: displayedHistory,
                     range: selectedRange,
                     showSpread: showSpread,
-                    hasCoreSplit: monitor.performanceUsage != nil
+                    hasCoreSplit: cpuMonitor.performanceUsage != nil
                 )
 
-                peaksRow
+                cpuPeaksRow
 
                 Divider()
 
-                ForEach(monitor.coreLoads) { core in
-                    LoadRow(
-                        label: core.type.label(index: core.displayIndex),
-                        usage: core.usage,
-                        help: core.type.explanation
-                    )
+                Text("GPU").font(.headline)
+
+                if gpuHistory.isEmpty {
+                    Text("No GPU data yet — recorded via the background helper (powermetrics).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    GPUHistoryChart(history: gpuHistory, range: selectedRange, showSpread: showSpread)
                 }
             }
             .padding()
         }
         .frame(minWidth: 420, minHeight: 520)
         .task {
-            await monitor.start()
+            await cpuMonitor.start()
         }
         .task {
             client.registerHelperIfNeeded()
@@ -123,7 +102,7 @@ struct CPULoadView: View {
         }
     }
 
-    private var peaksRow: some View {
+    private var cpuPeaksRow: some View {
         HStack(alignment: .top) {
             PeakBadge(
                 label: "Peak in range",
@@ -155,6 +134,7 @@ struct CPULoadView: View {
         let now = Date()
         let since = selectedRange.effectiveStart(now: now, bootTime: bootTime)
         remoteHistory = await client.fetchCPUHistory(since: since, bucketSeconds: selectedRange.bucketSeconds)
+        gpuHistory = await client.fetchGPUHistory(since: since, bucketSeconds: selectedRange.bucketSeconds)
     }
 
     private func refreshSinceBootAndPeaks() async {
@@ -179,41 +159,6 @@ private extension CPUHistoryPoint {
             performance: sample.performance.map(stats),
             efficiency: sample.efficiency.map(stats)
         )
-    }
-}
-
-/// Pure tick-generation/formatting logic for the history chart's X axis,
-/// pulled out of `CPUHistoryChart` so it's unit-testable without rendering a
-/// `Chart`. Internal (not private) — the view below it stays private.
-///
-/// Unlike the single fixed 60-minute window this replaced, the chart now
-/// spans four different `HistoryRange`s, so the tick stride scales with the
-/// window instead of always being 10 minutes.
-enum ChartTimeAxis {
-    static func strideSeconds(forWindowSeconds window: Double) -> Double {
-        switch window {
-        case ..<(20 * 60): 5 * 60 // 15m range -> 5m ticks
-        case ..<(2 * 60 * 60): 10 * 60 // 1h range -> 10m ticks
-        case ..<(12 * 60 * 60): 60 * 60 // 6h range -> 1h ticks
-        default: 4 * 60 * 60 // 24h range -> 4h ticks
-        }
-    }
-
-    static func tickValues(windowSeconds: Double, strideSeconds: Double) -> [Double] {
-        precondition(strideSeconds > 0, "stride must be positive")
-        return Array(stride(from: -windowSeconds, through: 0, by: strideSeconds))
-    }
-
-    static func tickLabel(forSecondsAgo seconds: Double) -> String {
-        let minutes = seconds / 60
-        if abs(minutes) < 60 {
-            // Round rather than truncate: Int(minutes) would silently
-            // truncate toward zero for a non-whole-minute value (e.g.
-            // -57.5 -> "-57m", the wrong neighbor).
-            return "\(Int(minutes.rounded()))m"
-        }
-        let hours = (seconds / 3600).rounded()
-        return "\(Int(hours))h"
     }
 }
 
@@ -369,48 +314,132 @@ private struct CPUHistoryChart: View {
     }
 }
 
-private struct LoadRow: View {
-    let label: String
-    let usage: Double
-    var capacity: Double = 1 // the value that represents a "full" bar, e.g. core count for aggregate rows
-    var help: String? = nil
-    var decimalPlaces: Int = 0
+/// Mirrors `CPUHistoryChart`'s shape but for a single series (GPU has no
+/// Performance/Efficiency split) — same range/spread/gap-segmentation/hover
+/// conventions, reused directly rather than duplicated differently.
+private struct GPUHistoryChart: View {
+    let history: [GPULoadHistoryPoint]
+    let range: HistoryRange
+    let showSpread: Bool
 
-    private var fractionFull: Double {
-        capacity > 0 ? min(usage / capacity, 1) : 0
+    @State private var hoveredPoint: GPULoadHistoryPoint?
+
+    private var latestDate: Date { history.last?.date ?? Date() }
+    private var strideSeconds: Double { ChartTimeAxis.strideSeconds(forWindowSeconds: range.duration) }
+
+    private var segments: [[GPULoadHistoryPoint]] {
+        HistoryGapSegmentation.segments(history, maxGap: range.bucketSeconds * 2.5)
+    }
+
+    private var yUpperBound: Double {
+        let maxValue = history.reduce(0.0) { max($0, $1.load.max) }
+        return max(0.1, min(1, (maxValue * 1.2)))
     }
 
     var body: some View {
-        HStack {
-            HStack(spacing: 4) {
-                Text(label)
-                if let help {
-                    Image(systemName: "info.circle")
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("GPU Load Over Time")
+                    .font(.headline)
+                Spacer()
+                if let hoveredPoint {
+                    Text(hoverSummary(for: hoveredPoint))
+                        .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
-                        .help(help)
                 }
             }
-            .frame(width: 170, alignment: .leading)
-            .monospacedDigit()
 
-            ProgressView(value: usage, total: capacity)
-                .tint(color(for: fractionFull))
+            Chart {
+                ForEach(Array(segments.enumerated()), id: \.offset) { segmentIndex, segment in
+                    ForEach(segment) { point in
+                        let secondsAgo = point.date.timeIntervalSince(latestDate)
 
-            Text(usage, format: .percent.precision(.fractionLength(decimalPlaces)))
-                .frame(width: 56, alignment: .trailing)
-                .monospacedDigit()
+                        if showSpread {
+                            AreaMark(
+                                x: .value("Time", secondsAgo),
+                                yStart: .value("Min", point.load.min),
+                                yEnd: .value("Max", point.load.max),
+                                series: .value("Segment", "envelope-\(segmentIndex)")
+                            )
+                            .foregroundStyle(Color.purple.opacity(0.1))
+                            .interpolationMethod(.monotone)
+
+                            AreaMark(
+                                x: .value("Time", secondsAgo),
+                                yStart: .value("-1\u{03c3}", point.load.lowerBand),
+                                yEnd: .value("+1\u{03c3}", point.load.upperBand),
+                                series: .value("Segment", "band-\(segmentIndex)")
+                            )
+                            .foregroundStyle(Color.purple.opacity(0.22))
+                            .interpolationMethod(.monotone)
+                        }
+
+                        LineMark(
+                            x: .value("Time", secondsAgo),
+                            y: .value("Load", point.load.mean),
+                            series: .value("Segment", "load-\(segmentIndex)")
+                        )
+                        .foregroundStyle(Color.purple)
+                        .interpolationMethod(.monotone)
+                    }
+                }
+            }
+            .chartXScale(domain: -range.duration...0)
+            .chartXAxis {
+                AxisMarks(values: ChartTimeAxis.tickValues(windowSeconds: range.duration, strideSeconds: strideSeconds)) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    if let seconds = value.as(Double.self) {
+                        AxisValueLabel(ChartTimeAxis.tickLabel(forSecondsAgo: seconds))
+                    }
+                }
+            }
+            .chartYScale(domain: 0...yUpperBound)
+            .chartYAxis {
+                AxisMarks { _ in
+                    AxisGridLine()
+                    AxisValueLabel(format: FloatingPointFormatStyle<Double>.Percent())
+                }
+            }
+            .chartXAxisLabel("Time")
+            .chartOverlay { proxy in
+                GeometryReader { geometry in
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let location):
+                                hoveredPoint = nearestPoint(to: location, proxy: proxy, geometry: geometry)
+                            case .ended:
+                                hoveredPoint = nil
+                            }
+                        }
+                }
+            }
+            .frame(height: 140)
         }
     }
 
-    private func color(for fractionFull: Double) -> Color {
-        switch fractionFull {
-        case ..<0.5: .green
-        case ..<0.8: .yellow
-        default: .red
+    private func nearestPoint(to location: CGPoint, proxy: ChartProxy, geometry: GeometryProxy) -> GPULoadHistoryPoint? {
+        guard let plotFrame = proxy.plotFrame else { return nil }
+        let origin = geometry[plotFrame].origin
+        guard let secondsAgo: Double = proxy.value(atX: location.x - origin.x) else { return nil }
+        return history.min { lhs, rhs in
+            abs(lhs.date.timeIntervalSince(latestDate) - secondsAgo) < abs(rhs.date.timeIntervalSince(latestDate) - secondsAgo)
         }
+    }
+
+    private func hoverSummary(for point: GPULoadHistoryPoint) -> String {
+        let stats = point.load
+        var summary = "mean \(formattedPercent(stats.mean))  \u{b1}\(formattedPercent(stats.stdDev))  min \(formattedPercent(stats.min))  max \(formattedPercent(stats.max))"
+        if let power = point.power {
+            summary += "  (\(Int(power.mean)) mW)"
+        }
+        return summary
     }
 }
 
 #Preview {
-    CPULoadView()
+    PerformanceHistoryView()
 }

@@ -18,7 +18,16 @@ final class HistoryRecorder {
     private var cpuBuffer: [HistoryStore.CPUSampleInput] = []
     private var memoryBuffer: [HistoryStore.MemorySampleInput] = []
     private var processBuffer: [HistoryStore.ProcessSampleInput] = []
+    private var gpuBuffer: [HistoryStore.GPUSampleInput] = []
     private var tickCount = 0
+
+    /// GPU samples arrive asynchronously from `powermetrics`'s own ~5s
+    /// schedule, not from this recorder's 1 Hz tick — see `PowerMetricsReader`.
+    private lazy var powerMetricsReader = PowerMetricsReader { [weak self] sample in
+        self?.queue.async {
+            self?.gpuBuffer.append(HistoryStore.GPUSampleInput(date: sample.date, loadFraction: sample.loadFraction, milliwatts: sample.milliwatts))
+        }
+    }
 
     /// Latest ranked list, served directly to `fetchTopProcesses` so the live
     /// view and the recorder share a single process enumeration per second
@@ -43,6 +52,8 @@ final class HistoryRecorder {
         timer.setEventHandler { [weak self] in self?.tick() }
         timer.resume()
         self.timer = timer
+
+        powerMetricsReader.start()
     }
 
     // MARK: - Sampling (runs on `queue`)
@@ -99,11 +110,12 @@ final class HistoryRecorder {
     }
 
     private func flushNow() {
-        guard !(cpuBuffer.isEmpty && memoryBuffer.isEmpty && processBuffer.isEmpty) else { return }
-        try? store.flush(cpuSamples: cpuBuffer, memorySamples: memoryBuffer, processSamples: processBuffer)
+        guard !(cpuBuffer.isEmpty && memoryBuffer.isEmpty && processBuffer.isEmpty && gpuBuffer.isEmpty) else { return }
+        try? store.flush(cpuSamples: cpuBuffer, memorySamples: memoryBuffer, processSamples: processBuffer, gpuSamples: gpuBuffer)
         cpuBuffer.removeAll()
         memoryBuffer.removeAll()
         processBuffer.removeAll()
+        gpuBuffer.removeAll()
     }
 
     /// Cutoff is `max(now - retention, bootTime)`, so a reboot discards
@@ -144,6 +156,14 @@ final class HistoryRecorder {
             self.flushNow()
             let entries = (try? self.store.queryProcessSummary(since: since, limit: limit)) ?? []
             reply(HistoryCoding.encode(entries))
+        }
+    }
+
+    func fetchGPUHistory(since: Date, bucketSeconds: Double, reply: @escaping (Data) -> Void) {
+        queue.async {
+            self.flushNow()
+            let points = (try? self.store.queryGPUHistory(since: since, bucketSeconds: bucketSeconds)) ?? []
+            reply(HistoryCoding.encode(points))
         }
     }
 

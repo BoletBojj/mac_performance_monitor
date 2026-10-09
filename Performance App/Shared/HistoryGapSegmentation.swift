@@ -6,6 +6,7 @@ nonisolated protocol HistoryDated {
 
 extension CPUHistoryPoint: HistoryDated {}
 extension MemoryHistoryPoint: HistoryDated {}
+extension GPULoadHistoryPoint: HistoryDated {}
 
 nonisolated enum HistoryGapSegmentation {
     /// Splits a time-ordered series into contiguous runs, breaking wherever

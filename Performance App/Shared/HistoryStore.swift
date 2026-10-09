@@ -51,6 +51,11 @@ nonisolated final class HistoryStore {
             CREATE TABLE IF NOT EXISTS peaks (
                 metric TEXT PRIMARY KEY, value REAL NOT NULL, ts REAL NOT NULL, detail TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS gpu_samples (
+                ts REAL NOT NULL, load_fraction REAL NOT NULL, milliwatts REAL
+            );
+            CREATE INDEX IF NOT EXISTS idx_gpu_ts ON gpu_samples(ts);
             """)
     }
 
@@ -77,12 +82,23 @@ nonisolated final class HistoryStore {
         let usages: [(name: String, usage: Double)]
     }
 
+    struct GPUSampleInput {
+        let date: Date
+        let loadFraction: Double
+        let milliwatts: Double?
+    }
+
     /// Writes a batch of buffered samples in one transaction, and updates the
     /// all-time peak records from the same batch (so this adds no extra
     /// writes). Call roughly every 10s from the recorder's in-memory buffer,
     /// not once per 1Hz sample — that would make 1 transaction/second, far
     /// more I/O than this needs for a background daemon.
-    func flush(cpuSamples: [CPUSampleInput], memorySamples: [MemorySampleInput], processSamples: [ProcessSampleInput]) throws {
+    func flush(
+        cpuSamples: [CPUSampleInput],
+        memorySamples: [MemorySampleInput],
+        processSamples: [ProcessSampleInput],
+        gpuSamples: [GPUSampleInput] = []
+    ) throws {
         try exec("BEGIN IMMEDIATE")
         do {
             for sample in cpuSamples {
@@ -126,6 +142,15 @@ nonisolated final class HistoryStore {
                     updatePeakIfHigher(.singleProcess, value: usage, date: sample.date, detail: name)
                 }
             }
+
+            for sample in gpuSamples {
+                try run("INSERT INTO gpu_samples (ts, load_fraction, milliwatts) VALUES (?, ?, ?)") { stmt in
+                    sqlite3_bind_double(stmt, 1, sample.date.timeIntervalSince1970)
+                    sqlite3_bind_double(stmt, 2, sample.loadFraction)
+                    bindOptionalDouble(stmt, 3, sample.milliwatts)
+                }
+                updatePeakIfHigher(.gpuLoad, value: sample.loadFraction, date: sample.date, detail: nil)
+            }
             try exec("COMMIT")
         } catch {
             try? exec("ROLLBACK")
@@ -145,6 +170,7 @@ nonisolated final class HistoryStore {
             try run("DELETE FROM memory_samples WHERE ts < ?") { sqlite3_bind_double($0, 1, ts) }
             try run("DELETE FROM process_samples WHERE ts < ?") { sqlite3_bind_double($0, 1, ts) }
             try exec("DELETE FROM process_names WHERE id NOT IN (SELECT DISTINCT name_id FROM process_samples)")
+            try run("DELETE FROM gpu_samples WHERE ts < ?") { sqlite3_bind_double($0, 1, ts) }
             try exec("COMMIT")
         } catch {
             try? exec("ROLLBACK")
@@ -278,6 +304,47 @@ nonisolated final class HistoryStore {
             ))
         })
         return entries
+    }
+
+    /// `milliwatts` is nullable per-sample (derived, less certain than
+    /// `loadFraction` — see `GPULoadSample`), so its bucket only counts the
+    /// samples where it was actually available (`COUNT`/`SUM` skip NULLs in
+    /// SQLite automatically), the same `COUNT(performance)`-style pattern
+    /// `queryCPUHistory` uses for its optional P/E fields.
+    func queryGPUHistory(since: Date, bucketSeconds: Double) throws -> [GPULoadHistoryPoint] {
+        let sql = """
+            SELECT CAST(ts / ?1 AS INTEGER) AS bucket,
+                   COUNT(*), SUM(load_fraction), SUM(load_fraction * load_fraction), MIN(load_fraction), MAX(load_fraction),
+                   COUNT(milliwatts), SUM(milliwatts), SUM(milliwatts * milliwatts), MIN(milliwatts), MAX(milliwatts)
+            FROM gpu_samples
+            WHERE ts >= ?2
+            GROUP BY bucket
+            ORDER BY bucket
+            """
+        var points: [GPULoadHistoryPoint] = []
+        try query(sql, bind: { stmt in
+            sqlite3_bind_double(stmt, 1, bucketSeconds)
+            sqlite3_bind_double(stmt, 2, since.timeIntervalSince1970)
+        }, row: { stmt in
+            let bucket = sqlite3_column_double(stmt, 0)
+            let load = BucketStats(
+                count: Int(sqlite3_column_int64(stmt, 1)),
+                sum: sqlite3_column_double(stmt, 2),
+                sumOfSquares: sqlite3_column_double(stmt, 3),
+                min: sqlite3_column_double(stmt, 4),
+                max: sqlite3_column_double(stmt, 5)
+            )
+            let powerCount = Int(sqlite3_column_int64(stmt, 6))
+            let power = powerCount > 0 ? BucketStats(
+                count: powerCount,
+                sum: sqlite3_column_double(stmt, 7),
+                sumOfSquares: sqlite3_column_double(stmt, 8),
+                min: sqlite3_column_double(stmt, 9),
+                max: sqlite3_column_double(stmt, 10)
+            ) : nil
+            points.append(GPULoadHistoryPoint(date: Date(timeIntervalSince1970: bucket * bucketSeconds), load: load, power: power))
+        })
+        return points
     }
 
     func fetchPeaks() throws -> [PeakRecord] {

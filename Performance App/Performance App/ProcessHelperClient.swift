@@ -117,6 +117,11 @@ final class ProcessHelperClient {
         return HistoryCoding.decodeArray(ProcessSummaryEntry.self, from: data)
     }
 
+    func fetchGPUHistory(since: Date, bucketSeconds: Double) async -> [GPULoadHistoryPoint] {
+        guard let data = await fetchHistoryData({ $0.fetchGPUHistory(since: since, bucketSeconds: bucketSeconds, withReply: $1) }) else { return [] }
+        return HistoryCoding.decodeArray(GPULoadHistoryPoint.self, from: data)
+    }
+
     func fetchPeaks() async -> [PeakRecord] {
         guard let data = await fetchHistoryData({ $0.fetchPeaks(withReply: $1) }) else { return [] }
         return HistoryCoding.decodeArray(PeakRecord.self, from: data)
