@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		7529E9953076625A007A4720 /* Performance App Helper in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7529E97930765CED007A4720 /* Performance App Helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		7547EA713078F47C007236BD /* ARCHITECTURE.md in Resources */ = {isa = PBXBuildFile; fileRef = 7547EA703078F47C007236BD /* ARCHITECTURE.md */; };
 		75487B9230729506009D0128 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 75487B9130729506009D0128 /* .gitignore */; };
 		757674943077534300DA5F97 /* ProcessHelperXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757674903077534300DA5F97 /* ProcessHelperXPC.swift */; };
 		757674953077534300DA5F97 /* ProcessRanking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757674913077534300DA5F97 /* ProcessRanking.swift */; };
@@ -73,6 +74,7 @@
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* Performance App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Performance App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7529E97930765CED007A4720 /* Performance App Helper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Performance App Helper"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7547EA703078F47C007236BD /* ARCHITECTURE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ARCHITECTURE.md; sourceTree = "<group>"; };
 		75487B9130729506009D0128 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		755DA9983073DFF9000E8802 /* Performance App Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Performance App Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		757674903077534300DA5F97 /* ProcessHelperXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHelperXPC.swift; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 				000000000000000000000010 /* Performance App */,
 				755DA9993073DFF9000E8802 /* Performance App Tests */,
 				7529E97A30765CED007A4720 /* Performance App Helper */,
+				7547EA703078F47C007236BD /* ARCHITECTURE.md */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -285,6 +288,7 @@
 			isa = PBXResourcesBuildPhase;
 			files = (
 				75487B9230729506009D0128 /* .gitignore in Resources */,
+				7547EA713078F47C007236BD /* ARCHITECTURE.md in Resources */,
 			);
 		};
 		755DA9963073DFF9000E8802 /* Resources */ = {
